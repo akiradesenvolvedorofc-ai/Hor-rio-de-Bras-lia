@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Horário de Brasília · Calendário · Sol & Lua · Tempo</title>
+<meta name="theme-color" content="#04050c" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕒</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@200;300;400;700&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================
+   RESET & TOKENS
+   ========================================================== */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+:root{
+  --cyan:      #22d3ee;
+  --cyan-soft: #7df9ff;
+  --violet:    #8b5cf6;
+  --pink:      #f472b6;
+  --text:      #e9ecff;
+  --muted:     #8b94c2;
+  --radius:    34px;
+  --holiday:   #fbbf24;
+  --rain:      #38bdf8;
+  --aqi-good:  #4ade80;
+  --aqi-mod:   #facc15;
+  --aqi-bad:   #f87171;
+}
+
+*, *::before, *::after{ margin: 0; padding: 0; box-sizing: border-box; }
+html{ height: 100%; }
+
+body{
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: #04050c;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ==========================================================
+   FUNDO
+   ========================================================== */
+.bg{
+  position: fixed; inset: 0; z-index: -3; overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 12% -10%, rgba(56, 89, 248, .28), transparent 62%),
+    radial-gradient(ellipse 75% 65% at 92% 108%, rgba(168, 85, 247, .24), transparent 62%),
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(34, 211, 238, .07), transparent 72%),
+    #04050c;
+}
+.blob{ position: absolute; border-radius: 50%; will-change: transform; opacity: .7; }
+.blob.b1{ width: 48vmax; height: 48vmax; top: -20vmax; left: -16vmax; background: radial-gradient(circle at 50% 50%, rgba(37, 99, 235, .55) 0%, rgba(37, 99, 235, .22) 38%, transparent 72%); animation: drift1 28s ease-in-out infinite; }
+.blob.b2{ width: 42vmax; height: 42vmax; bottom: -18vmax; right: -14vmax; background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, .55) 0%, rgba(139, 92, 246, .20) 40%, transparent 72%); animation: drift2 34s ease-in-out infinite; }
+.blob.b3{ width: 30vmax; height: 30vmax; top: 45%; left: 55%; background: radial-gradient(circle at 50% 50%, rgba(34, 211, 238, .34) 0%, rgba(34, 211, 238, .12) 45%, transparent 72%); animation: drift3 24s ease-in-out infinite; }
+@keyframes drift1{ 0%, 100%{ transform: translate3d(0, 0, 0) scale(1); } 50%{ transform: translate3d(9vmax, 7vmax, 0) scale(1.14); } }
+@keyframes drift2{ 0%, 100%{ transform: translate3d(0, 0, 0) scale(1.05); } 50%{ transform: translate3d(-10vmax, -6vmax, 0) scale(.9); } }
+@keyframes drift3{ 0%, 100%{ transform: translate3d(-50%, -50%, 0) scale(1); } 50%{ transform: translate3d(-58%, -42%, 0) scale(1.25); } }
+
+#stars{ position: fixed; inset: 0; z-index: -2; pointer-events: none; opacity: .85; }
+.grid{ position: fixed; inset: 0; z-index: -1; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px); background-size: 68px 68px; -webkit-mask-image: radial-gradient(ellipse 72% 62% at 50% 46%, #000 18%, transparent 76%); mask-image: radial-gradient(ellipse 72% 62% at 50% 46%, #000 18%, transparent 76%); }
+
+/* ==========================================================
+   CARD PRINCIPAL
+   ========================================================== */
+.card{
+  position: relative; z-index: 1; width: min(920px, 94vw);
+  padding: clamp(30px, 5vw, 58px) clamp(20px, 5vw, 66px) clamp(28px, 4.5vw, 50px);
+  border-radius: var(--radius); text-align: center;
+  background: linear-gradient(158deg, rgba(255,255,255,.06), rgba(255,255,255,.012));
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 44px 110px -26px rgba(0, 0, 0, .85), 0 0 90px -30px rgba(80, 120, 255, .45), inset 0 1px 0 rgba(255, 255, 255, .13), inset 0 -1px 0 rgba(255, 255, 255, .03);
+  backdrop-filter: blur(26px) saturate(150%); -webkit-backdrop-filter: blur(26px) saturate(150%);
+  animation: cardIn 1.15s cubic-bezier(.2, .85, .25, 1) both;
+  overflow: hidden; isolation: isolate;
+}
+.card::before{ content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--angle), transparent 0deg, rgba(34, 211, 238, .95) 55deg, rgba(139, 92, 246, .0) 125deg, transparent 200deg, rgba(244, 114, 182, .8) 300deg, transparent 360deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; pointer-events: none; animation: spin 9s linear infinite; }
+.card::after{ content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 46%; height: 1px; background: linear-gradient(90deg, transparent, rgba(125, 249, 255, .9), transparent); filter: blur(.4px); pointer-events: none; }
+@keyframes spin{ to{ --angle: 360deg; } }
+@keyframes cardIn{ from{ opacity: 0; transform: translateY(34px) scale(.955); filter: blur(10px); } to{ opacity: 1; transform: none; filter: blur(0); } }
+
+/* ==========================================================
+   BADGE & RELÓGIO
+   ========================================================== */
+.badge{ display: inline-flex; align-items: center; gap: 10px; padding: 8px 17px; margin-bottom: clamp(22px, 4vw, 38px); border-radius: 999px; background: rgba(255, 255, 255, .045); border: 1px solid rgba(255, 255, 255, .085); font-size: clamp(.6rem, 1.55vw, .73rem); letter-spacing: .19em; text-transform: uppercase; color: #a9b2dd; animation: fadeUp .9s cubic-bezier(.2,.85,.25,1) .15s both; }
+.badge .dot{ width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px var(--cyan), 0 0 26px rgba(34, 211, 238, .6); animation: pulseDot 2s ease-in-out infinite; }
+.badge .sep{ opacity: .35; }
+.badge .loc{ color: #dfe5ff; letter-spacing: .12em; }
+@keyframes pulseDot{ 0%, 100%{ opacity: 1; transform: scale(1); } 50%{ opacity: .35; transform: scale(.7); } }
+@keyframes fadeUp{ from{ opacity: 0; transform: translateY(14px); } to{ opacity: 1; transform: none; } }
+
+.clock{ display: flex; align-items: center; justify-content: center; gap: clamp(1px, .55vw, 7px); font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 200; font-size: clamp(2.6rem, 14.5vw, 8.2rem); line-height: .95; letter-spacing: -.045em; font-variant-numeric: tabular-nums; animation: fadeUp 1s cubic-bezier(.2,.85,.25,1) .25s both; }
+.digits{ display: inline-block; background: linear-gradient(180deg, #ffffff 0%, #d3dbff 52%, #8fa3ff 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 26px rgba(120, 155, 255, .30)); }
+.digits.sec{ background: linear-gradient(180deg, #a8fbff 0%, #22d3ee 48%, #8b5cf6 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 24px rgba(34, 211, 238, .55)); will-change: transform; }
+.colon{ color: #55659d; font-weight: 200; transform: translateY(-.05em); transition: opacity .28s ease; }
+
+.progress{ position: relative; width: min(100%, 540px); height: 3px; margin: clamp(18px, 3.2vw, 28px) auto 0; border-radius: 999px; background: rgba(255, 255, 255, .065); overflow: hidden; animation: fadeUp .9s cubic-bezier(.2,.85,.25,1) .4s both; }
+.progress-fill{ position: absolute; inset: 0; border-radius: 999px; background: linear-gradient(90deg, #22d3ee 0%, #8b5cf6 55%, #f472b6 100%); box-shadow: 0 0 16px rgba(34, 211, 238, .7); transform-origin: left center; transform: scaleX(0); will-change: transform; }
+
+.date{ margin-top: clamp(20px, 3.4vw, 30px); font-size: clamp(1rem, 2.7vw, 1.55rem); font-weight: 400; color: #dfe4ff; animation: fadeUp .9s cubic-bezier(.2,.85,.25,1) .5s both; }
+.date #weekday{ text-transform: capitalize; color: #ffffff; font-weight: 500; }
+.date #day{ color: var(--cyan-soft); font-weight: 600; }
+
+.chips{ display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: clamp(20px, 3.2vw, 30px); animation: fadeUp .9s cubic-bezier(.2,.85,.25,1) .6s both; }
+.chip{ padding: 7px 15px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .075); background: rgba(255, 255, 255, .028); font-size: clamp(.66rem, 1.75vw, .79rem); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); white-space: nowrap; transition: all .3s ease; }
+.chip:hover{ border-color: rgba(34, 211, 238, .35); background: rgba(34, 211, 238, .06); color: #cfd8ff; }
+.chip b{ color: #eef1ff; font-weight: 600; }
+
+/* ==========================================================
+   PAINÉIS
+   ========================================================== */
+.panels{ display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(16px, 2.5vw, 24px); margin-top: clamp(28px, 4vw, 40px); text-align: left; animation: fadeUp .9s cubic-bezier(.2,.85,.25,1) .7s both; }
+.panel{ padding: clamp(16px, 2.8vw, 24px); border-radius: 22px; background: rgba(255, 255, 255, .028); border: 1px solid rgba(255, 255, 255, .07); backdrop-filter: blur(10px); transition: border-color .3s ease, background .3s ease; }
+.panel:hover{ border-color: rgba(34, 211, 238, .18); background: rgba(255, 255, 255, .04); }
+
+/* ---- TEMPO / PREVISÃO ---- */
+.weather-panel{ grid-column: 1 / -1; display: flex; flex-direction: column; }
+.weather-header{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;}
+.weather-header h3{ font-size: clamp(.85rem, 2vw, 1rem); font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.weather-loc{ font-size: clamp(.7rem, 1.8vw, .85rem); color: var(--cyan-soft); font-weight: 500; display: flex; align-items: center; gap: 4px;}
+.weather-loc::before { content: '📍'; font-size: 1em; }
+.weather-body{ display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+.weather-temp-box{ display: flex; align-items: center; gap: 12px; }
+.weather-icon{ font-size: clamp(2.5rem, 6vw, 3.5rem); line-height: 1; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
+.weather-temp{ font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 300; color: #fff; letter-spacing: -.05em; }
+.weather-desc-box{ display: flex; flex-direction: column; gap: 4px; }
+.weather-cond{ font-size: clamp(.9rem, 2.2vw, 1.1rem); color: #eef1ff; font-weight: 500; text-transform: capitalize; }
+.weather-rain{ font-size: clamp(.7rem, 1.8vw, .85rem); color: var(--muted); }
+.weather-rain span{ font-weight: 700; }
+.weather-rain .alert-rain{ color: var(--rain); text-shadow: 0 0 8px rgba(56, 189, 248, 0.5); }
+.weather-rain .alert-dry{ color: var(--holiday); }
+
+/* Detalhes do Clima */
+.weather-details { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 14px; padding: 10px; border: 1px solid rgba(255, 255, 255, 0.04); }
+.detail-item { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.detail-label { font-size: clamp(.55rem, 1.5vw, .65rem); text-transform: uppercase; color: var(--muted); letter-spacing: .05em; }
+.detail-value { font-size: clamp(.75rem, 1.9vw, .9rem); font-weight: 600; color: #eef1ff; }
+.aqi-good { color: var(--aqi-good) !important; text-shadow: 0 0 8px rgba(74, 222, 128, 0.3); }
+.aqi-mod { color: var(--aqi-mod) !important; text-shadow: 0 0 8px rgba(250, 204, 21, 0.3); }
+.aqi-bad { color: var(--aqi-bad) !important; text-shadow: 0 0 8px rgba(248, 113, 113, 0.3); }
+
+/* ---- CALENDÁRIO ---- */
+.panel-header{ display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.panel-header h2{ font-size: clamp(.95rem, 2.2vw, 1.15rem); font-weight: 500; color: #eef1ff; text-transform: capitalize; }
+.panel-header button{ width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .04); color: #cfd8ff; font-size: 1.1rem; cursor: pointer; display: grid; place-items: center; transition: all .25s ease; }
+.panel-header button:hover{ background: rgba(34, 211, 238, .12); border-color: rgba(34, 211, 238, .3); transform: scale(1.06); }
+.panel-header button:active{ transform: scale(.94); }
+
+.calendar-grid{ display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; font-size: clamp(.62rem, 1.6vw, .78rem); }
+.calendar-grid .weekday-label{ text-align: center; padding: 4px 0; color: var(--muted); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; }
+.calendar-grid .day-cell{ display: grid; place-items: center; aspect-ratio: 1; border-radius: 8px; color: #c8d0f0; font-weight: 400; transition: background .2s, color .2s; position: relative; }
+.calendar-grid .day-cell.empty{ opacity: 0; pointer-events: none; }
+.calendar-grid .day-cell.today{ background: linear-gradient(135deg, rgba(34, 211, 238, .25), rgba(139, 92, 246, .25)); border: 1px solid rgba(34, 211, 238, .45); color: #ffffff; font-weight: 700; box-shadow: 0 0 14px rgba(34, 211, 238, .25); }
+.calendar-grid .day-cell.holiday{ color: var(--holiday); font-weight: 600; }
+.calendar-grid .day-cell.holiday::after{ content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--holiday); box-shadow: 0 0 6px var(--holiday); }
+.calendar-grid .day-cell.today.holiday{ color: #ffffff; }
+.calendar-grid .day-cell.today.holiday::after{ background: #ffffff; box-shadow: 0 0 6px #fff; }
+
+.holiday-list{ margin-top: 14px; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; padding-right: 4px; }
+.holiday-list::-webkit-scrollbar{ width: 3px; }
+.holiday-list::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.15); border-radius: 3px; }
+.holiday-item{ display: flex; align-items: baseline; gap: 8px; font-size: clamp(.65rem, 1.7vw, .78rem); color: #b8c2e8; line-height: 1.35; }
+.holiday-item .h-date{ color: var(--holiday); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.holiday-item .h-name{ color: #d4daf5; }
+.holiday-item .h-tag{ font-size: .55rem; letter-spacing: .08em; text-transform: uppercase; color: #8b94c2; border: 1px solid rgba(255,255,255,.1); border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+
+/* ---- SOL & LUA ---- */
+.sky-panel h3{ font-size: clamp(.85rem, 2vw, 1rem); font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+.sky-info{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sky-item{ display: flex; flex-direction: column; gap: 2px; padding: 9px 11px; border-radius: 12px; background: rgba(255, 255, 255, .025); border: 1px solid rgba(255, 255, 255, .05); }
+.sky-label{ font-size: clamp(.55rem, 1.5vw, .64rem); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.sky-value{ font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: clamp(.85rem, 2.2vw, 1.05rem); font-weight: 300; color: #eef1ff; font-variant-numeric: tabular-nums; }
+.moon-info{ display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 11px 13px; border-radius: 14px; background: linear-gradient(135deg, rgba(139, 92, 246, .1), rgba(34, 211, 238, .08)); border: 1px solid rgba(139, 92, 246, .18); }
+.moon-emoji{ font-size: clamp(1.8rem, 4.5vw, 2.4rem); line-height: 1; filter: drop-shadow(0 0 10px rgba(180, 200, 255, .3)); }
+.moon-phase{ font-size: clamp(.78rem, 2vw, .9rem); font-weight: 500; color: #eef1ff; }
+.moon-illum{ font-size: clamp(.62rem, 1.7vw, .72rem); color: var(--muted); margin-top: 1px; }
+
+/* ==========================================================
+   RESPONSIVO
+   ========================================================== */
+@media (max-width: 760px){
+  .panels{ grid-template-columns: 1fr; }
+  .sky-info{ grid-template-columns: 1fr 1fr; }
+  .weather-details { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px){
+  body{ padding: 14px; }
+  .card{ border-radius: 26px; padding-left: 16px; padding-right: 16px; }
+  .badge .loc, .badge .sep{ display: none; }
+  .calendar-grid{ gap: 2px; }
+  .weather-body{ flex-direction: column; align-items: flex-start; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{ animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+</div>
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="grid" aria-hidden="true"></div>
+
+<main class="card">
+
+  <div class="badge">
+    <span class="dot"></span>
+    <span>Ao vivo</span>
+    <span class="sep">·</span>
+    <span class="loc">Sua Cidade</span>
+  </div>
+
+  <div class="clock" role="timer">
+    <span class="digits" id="hh">00</span><span class="colon">:</span><span class="digits" id="mm">00</span><span class="colon">:</span><span class="digits sec" id="ss">00</span>
+  </div>
+
+  <div class="progress"><div class="progress-fill" id="prog"></div></div>
+
+  <div class="date">
+    <span id="weekday">—</span>, <span id="day">—</span> de <span id="month">—</span> de <span id="year">—</span>
+  </div>
+
+  <div class="chips">
+    <span class="chip">Fuso <b>Local</b></span>
+    <span class="chip">Dia <b id="doy">—</b> do ano</span>
+    <span class="chip">Semana <b id="wk">—</b></span>
+  </div>
+
+  <div class="panels">
+
+    <!-- TEMPO -->
+    <section class="panel weather-panel">
+      <div class="weather-header">
+        <h3>Previsão de Hoje</h3>
+        <span class="weather-loc" id="weatherLoc">Detectando...</span>
+      </div>
+      <div class="weather-body">
+        <div class="weather-temp-box">
+          <span class="weather-icon" id="weatherIcon">⏳</span>
+          <span class="weather-temp" id="weatherTemp">--°C</span>
+        </div>
+        <div class="weather-desc-box">
+          <span class="weather-cond" id="weatherCond">Carregando...</span>
+          <span class="weather-rain" id="weatherRain">Chance de chuva: <span>--%</span></span>
+        </div>
+      </div>
+      
+      <div class="weather-details">
+        <div class="detail-item">
+          <span class="detail-label">Sensação</span>
+          <span class="detail-value" id="weatherFeels">--°C</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Umidade</span>
+          <span class="detail-value" id="weatherHumidity">--%</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Vento</span>
+          <span class="detail-value" id="weatherWind">-- km/h</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Qual. do Ar</span>
+          <span class="detail-value" id="weatherAQI">--</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CALENDÁRIO -->
+    <section class="panel calendar-panel">
+      <div class="panel-header">
+        <button id="prevMonth" aria-label="Mês anterior">‹</button>
+        <h2 id="monthYear">—</h2>
+        <button id="nextMonth" aria-label="Próximo mês">›</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="holiday-list" id="holidayList"></div>
+    </section>
+
+    <!-- SOL & LUA -->
+    <section class="panel sky-panel">
+      <h3>Sol & Lua</h3>
+      <div class="sky-info">
+        <div class="sky-item">
+          <span class="sky-label">Nascer do sol</span>
+          <span class="sky-value" id="sunrise">--:--</span>
+        </div>
+        <div class="sky-item">
+          <span class="sky-label">Pôr do sol</span>
+          <span class="sky-value" id="sunset">--:--</span>
+        </div>
+        <div class="sky-item">
+          <span class="sky-label">Fica escuro</span>
+          <span class="sky-value" id="dusk">--:--</span>
+        </div>
+        <div class="sky-item">
+          <span class="sky-label">Amanhece</span>
+          <span class="sky-value" id="dawn">--:--</span>
+        </div>
+      </div>
+      <div class="moon-info">
+        <span class="moon-emoji" id="moonEmoji">🌕</span>
+        <div>
+          <div class="moon-phase" id="moonPhase">—</div>
+          <div class="moon-illum" id="moonIllum">—</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+/* ==========================================================
+   SUN CALC (Offline)
+   ========================================================== */
+(function () {
+  'use strict';
+  var PI = Math.PI, sin = Math.sin, cos = Math.cos, tan = Math.tan, asin = Math.asin, atan = Math.atan2, acos = Math.acos, rad = PI / 180;
+  var dayMs = 1000 * 60 * 60 * 24, J1970 = 2440588, J2000 = 2451545;
+  var e = rad * 23.4397;
+  function toJulian(date) { return date.valueOf() / dayMs - 0.5 + J1970; }
+  function toDays(date)   { return toJulian(date) - J2000; }
+  function rightAscension(l, b) { return atan(sin(l) * cos(e) - tan(b) * sin(e), cos(l)); }
+  function declination(l, b)    { return asin(sin(b) * cos(e) + cos(b) * sin(e) * sin(l)); }
+  function siderealTime(d, lw) { return rad * (280.16 + 360.9856235 * d) - lw; }
+  function solarMeanAnomaly(d) { return rad * (357.5291 + 0.98560028 * d); }
+  function eclipticLongitude(M) { var C = rad * (1.9148 * sin(M) + 0.02 * sin(2 * M) + 0.0003 * sin(3 * M)), P = rad * 102.9372; return M + C + P + PI; }
+  function sunCoords(d) { var M = solarMeanAnomaly(d), L = eclipticLongitude(M); return { dec: declination(L, 0), ra: rightAscension(L, 0) }; }
+  function moonCoords(d) { var L = rad * (218.316 + 13.176396 * d), M = rad * (134.963 + 13.064993 * d), F = rad * (93.272 + 13.229350 * d); var l = L + rad * 6.289 * sin(M), b = rad * 5.128 * sin(F), dt = 385001 - 20905 * cos(M); return { ra: rightAscension(l, b), dec: declination(l, b), dist: dt }; }
+
+  window.SunCalc = {
+    getTimes: function (date, lat, lng) {
+      var lw = rad * -lng, phi = rad * lat, d = toDays(date), n = siderealTime(d, lw), ds = solarMeanAnomaly(d), L = eclipticLongitude(ds), dec = declination(L, 0), Jnoon = J2000 + (0.0009 + lw / (2 * PI)) + n - rightAscension(L, 0), i, time, Jset, Jrise, h0, H;
+      var times = [[-0.833, 'sunrise', 'sunset'], [-6, 'dawn', 'dusk']];
+      var result = {};
+      for (i = 0; i < times.length; i += 1) {
+        h0 = times[i][0];
+        H = (h0 > 0 ? -1 : 1) * acos((sin(rad * h0) - sin(phi) * sin(dec)) / (cos(phi) * cos(dec)));
+        Jset = Jnoon + H / (2 * PI); Jrise = Jnoon - H / (2 * PI);
+        result[times[i][1]] = new Date((Jrise + 0.5 - J1970) * dayMs);
+        result[times[i][2]] = new Date((Jset + 0.5 - J1970) * dayMs);
+      }
+      return result;
+    },
+    getMoonIllumination: function (date) {
+      var d = toDays(date || new Date()), s = sunCoords(d), m = moonCoords(d), sdist = 149598000, phi = acos(sin(s.dec) * sin(m.dec) + cos(s.dec) * cos(m.dec) * cos(s.ra - m.ra)), inc = atan(sdist * sin(phi), m.dist - sdist * cos(phi)), angle = atan(cos(s.dec) * sin(s.ra - m.ra), sin(s.dec) * cos(m.dec) - cos(s.dec) * sin(m.dec) * cos(s.ra - m.ra));
+      return { fraction: (1 + cos(inc)) / 2, phase: 0.5 + 0.5 * inc * (angle < 0 ? -1 : 1) / PI, angle: angle };
+    }
+  };
+})();
+
+/* ==========================================================
+   LÓGICA DO SITE
+   ========================================================== */
+(function () {
+  'use strict';
+
+  ['copy', 'cut', 'contextmenu', 'selectstart'].forEach(evt => {
+    document.addEventListener(evt, e => { e.preventDefault(); return false; });
+  });
+
+  // Pega o fuso horário exato do aparelho do usuário
+  const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  const timeFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const numFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: 'numeric', day: 'numeric' });
+  const skyFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+
+  const $ = (id) => document.getElementById(id);
+  const hhEl = $('hh'), mmEl = $('mm'), ssEl = $('ss');
+  const weekdayEl = $('weekday'), dayEl = $('day'), monthEl = $('month'), yearEl = $('year');
+  const doyEl = $('doy'), wkEl = $('wk'), progEl = $('prog'), colons = document.querySelectorAll('.colon');
+  const calendarGrid = $('calendarGrid'), monthYearEl = $('monthYear'), holidayListEl = $('holidayList'), prevBtn = $('prevMonth'), nextBtn = $('nextMonth');
+  const sunriseEl = $('sunrise'), sunsetEl = $('sunset'), duskEl = $('dusk'), dawnEl = $('dawn');
+  const moonEmojiEl = $('moonEmoji'), moonPhaseEl = $('moonPhase'), moonIllumEl = $('moonIllum');
+  
+  const weatherLocEl = $('weatherLoc'), weatherIconEl = $('weatherIcon'), weatherTempEl = $('weatherTemp'), weatherCondEl = $('weatherCond'), weatherRainEl = $('weatherRain');
+  const weatherFeelsEl = $('weatherFeels'), weatherHumidityEl = $('weatherHumidity'), weatherWindEl = $('weatherWind'), weatherAQIEl = $('weatherAQI');
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  
+  let userLat = -15.7942; // Inicia em Brasília até achar a real
+  let userLng = -47.8822;
+  let viewMonth = new Date().getMonth(), viewYear = new Date().getFullYear();
+  const feriadosCache = {};
+
+  /* ========================================================
+     CLIMA / TEMPO / AR
+     ======================================================== */
+  const WMO_CODES = {
+    0: { t: 'Céu limpo', e: '☀️' }, 1: { t: 'Predomínio de sol', e: '🌤️' }, 2: { t: 'Parcialmente nublado', e: '⛅' }, 3: { t: 'Nublado', e: '☁️' },
+    45: { t: 'Nevoeiro', e: '🌫️' }, 48: { t: 'Nevoeiro', e: '🌫️' },
+    51: { t: 'Garoa leve', e: '🌦️' }, 53: { t: 'Garoa', e: '🌦️' }, 55: { t: 'Garoa forte', e: '🌧️' },
+    61: { t: 'Chuva leve', e: '🌧️' }, 63: { t: 'Chuva', e: '🌧️' }, 65: { t: 'Chuva forte', e: '🌧️' },
+    71: { t: 'Neve leve', e: '🌨️' }, 73: { t: 'Neve', e: '🌨️' }, 75: { t: 'Neve forte', e: '🌨️' },
+    80: { t: 'Pancadas de chuva', e: '🌧️' }, 81: { t: 'Pancadas fortes', e: '🌧️' }, 82: { t: 'Pancadas violentas', e: '⛈️' },
+    95: { t: 'Tempestade', e: '⛈️' }, 96: { t: 'Tempestade c/ granizo', e: '⛈️' }, 99: { t: 'Tempestade forte', e: '⛈️' }
+  };
+
+  async function carregarClima(lat, lon, cidade) {
+    // Converte para número para garantir que o cálculo do Sol não quebre
+    userLat = parseFloat(lat);
+    userLng = parseFloat(lon);
+    updateSkyInfo(new Date()); // Recalcula Sol/Lua com a coordenada certa
+
+    try {
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=precipitation_probability_max&timezone=auto`;
+      const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${userLat}&longitude=${userLng}&current=us_aqi`;
+
+      const [weatherRes, aqiRes] = await Promise.all([
+        fetch(weatherUrl),
+        fetch(aqiUrl).catch(() => null)
+      ]);
+
+      if (!weatherRes.ok) throw new Error('API Offline');
+      const data = await weatherRes.json();
+
+      const temp = Math.round(data.current.temperature_2m);
+      const feels = Math.round(data.current.apparent_temperature);
+      const hum = data.current.relative_humidity_2m;
+      const wind = data.current.wind_speed_10m;
+      const code = data.current.weather_code;
+      const chuva = data.daily.precipitation_probability_max[0];
+      const info = WMO_CODES[code] || { t: 'Desconhecido', e: '❓' };
+
+      weatherLocEl.textContent = cidade;
+      weatherTempEl.textContent = `${temp}°C`;
+      weatherIconEl.textContent = info.e;
+      weatherCondEl.textContent = info.t;
+
+      weatherFeelsEl.textContent = `${feels}°C`;
+      weatherHumidityEl.textContent = `${hum}%`;
+      weatherWindEl.textContent = `${Math.round(wind)} km/h`;
+
+      let avisoChuva = '';
+      if (chuva >= 50 || (code >= 51 && code <= 99)) {
+        avisoChuva = `<span class="alert-rain">☔ Sim, pode chover (${chuva}%)</span>`;
+      } else if (chuva > 10) {
+        avisoChuva = `<span>🌤️ Baixa chance (${chuva}%)</span>`;
+      } else {
+        avisoChuva = `<span class="alert-dry">☀️ Não vai chover (${chuva}%)</span>`;
+      }
+      weatherRainEl.innerHTML = `Chance de chuva: ${avisoChuva}`;
+
+      if (aqiRes && aqiRes.ok) {
+        const aqiData = await aqiRes.json();
+        const aqi = aqiData.current.us_aqi;
+        let aqiText = '', aqiClass = '';
+        if (aqi <= 50) { aqiText = 'Boa'; aqiClass = 'aqi-good'; }
+        else if (aqi <= 100) { aqiText = 'Moderada'; aqiClass = 'aqi-mod'; }
+        else if (aqi <= 150) { aqiText = 'Ruim'; aqiClass = 'aqi-bad'; }
+        else { aqiText = 'Muito Ruim'; aqiClass = 'aqi-bad'; }
+        weatherAQIEl.textContent = `${aqi} (${aqiText})`;
+        weatherAQIEl.className = `detail-value ${aqiClass}`;
+      } else {
+        weatherAQIEl.textContent = 'N/D';
+        weatherAQIEl.className = 'detail-value';
+      }
+
+    } catch (err) {
+      weatherLocEl.textContent = 'Sem conexão';
+      weatherTempEl.textContent = '--°C';
+      weatherIconEl.textContent = '📡';
+      weatherCondEl.textContent = 'Falha';
+      weatherRainEl.innerHTML = 'Verifique a internet';
+      weatherFeelsEl.textContent = '--°C';
+      weatherHumidityEl.textContent = '--%';
+      weatherWindEl.textContent = '-- km/h';
+      weatherAQIEl.textContent = '--';
+    }
+  }
+
+  // Fallback 1: Se o GPS falhar, tenta o IP
+  async function tentarIP() {
+    weatherLocEl.textContent = "Detectando via IP...";
+    try {
+      const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
+      const ipData = await ipRes.json();
+      if (ipData.city && ipData.latitude && ipData.longitude) {
+        carregarClima(ipData.latitude, ipData.longitude, ipData.city);
+      } else {
+        carregarClima(-15.7942, -47.8822, 'Brasília (Padrão)');
+      }
+    } catch (e) {
+      carregarClima(-15.7942, -47.8822, 'Brasília (Padrão)');
+    }
+  }
+
+  // Inicia a detecção: AGORA O GPS É A PRIORIDADE!
+  function detectarCidade() {
+    weatherLocEl.textContent = "Buscando GPS...";
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          try {
+            const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=pt`);
+            const geoData = await geoRes.json();
+            carregarClima(lat, lon, geoData.city || geoData.locality || 'Sua Cidade');
+          } catch (e) {
+            carregarClima(lat, lon, 'Sua Cidade');
+          }
+        },
+        (err) => {
+          // Se o usuário negar o GPS ou der erro, aí sim usa o IP
+          console.log("GPS negado/falhou. Tentando IP.");
+          tentarIP();
+        },
+        { timeout: 8000, maximumAge: 600000 }
+      );
+    } else {
+      tentarIP();
+    }
+  }
+
+  /* ========================================================
+     CALENDÁRIO / FERIADOS
+     ======================================================== */
+  function formatarMD(d) { return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function calcularPascoa(ano) {
+    const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4;
+    const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4), j = c % 4, k = (32 + 2 * e + 2 * i - h - j) % 7, l = Math.floor((a + 11 * h + 22 * k) / 451);
+    const mes = Math.floor((h + k - 7 * l + 114) / 31), dia = 1 + ((h + k - 7 * l + 114) % 31);
+    return new Date(ano, mes - 1, dia);
+  }
+  function getFeriados(ano) {
+    if (feriadosCache[ano]) return feriadosCache[ano];
+    const f = { '01-01': { nome: 'Confraternização Universal' }, '04-21': { nome: 'Tiradentes' }, '05-01': { nome: 'Dia do Trabalho' }, '09-07': { nome: 'Independência do Brasil' }, '10-12': { nome: 'Nossa Senhora Aparecida' }, '11-02': { nome: 'Finados' }, '11-15': { nome: 'Proclamação da República' }, '11-20': { nome: 'Consciência Negra' }, '12-25': { nome: 'Natal' } };
+    const p = calcularPascoa(ano);
+    f[formatarMD(new Date(p.getFullYear(), p.getMonth(), p.getDate() - 47))] = { nome: 'Carnaval', facultativo: true };
+    f[formatarMD(new Date(p.getFullYear(), p.getMonth(), p.getDate() - 2))] = { nome: 'Paixão de Cristo' };
+    f[formatarMD(new Date(p.getFullYear(), p.getMonth(), p.getDate() + 60))] = { nome: 'Corpus Christi', facultativo: true };
+    feriadosCache[ano] = f; return f;
+  }
+  function renderCalendar(mes, ano) {
+    const primeiroDia = new Date(ano, mes, 1).getDay(), diasNoMes = new Date(ano, mes + 1, 0).getDate();
+    const hoje = new Date(), isMesAtual = (hoje.getMonth() === mes && hoje.getFullYear() === ano);
+    const feriados = getFeriados(ano), mesFmt = String(mes + 1).padStart(2, '0');
+    const nomeMes = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(new Date(ano, mes, 1));
+    monthYearEl.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1) + ' ' + ano;
+
+    let html = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(l => `<div class="weekday-label">${l}</div>`).join('');
+    for (let i = 0; i < primeiroDia; i++) html += '<div class="day-cell empty"></div>';
+    for (let d = 1; d <= diasNoMes; d++) {
+      const key = mesFmt + '-' + String(d).padStart(2, '0'), feriado = feriados[key];
+      let cls = 'day-cell'; if (isMesAtual && d === hoje.getDate()) cls += ' today'; if (feriado) cls += ' holiday';
+      html += `<div class="${cls}" ${feriado ? `title="${feriado.nome}"` : ''}>${d}</div>`;
+    }
+    calendarGrid.innerHTML = html;
+
+    const lista = Object.keys(feriados).filter(k => k.startsWith(mesFmt + '-')).sort();
+    holidayListEl.innerHTML = lista.length === 0 ? '<div class="holiday-item"><span class="h-name" style="color:var(--muted)">Nenhum feriado neste mês.</span></div>' :
+      lista.map(k => `<div class="holiday-item"><span class="h-date">${k.slice(3)}/${mesFmt}</span><span class="h-name">${feriados[k].nome}</span>${feriados[k].facultativo ? '<span class="h-tag">facult.</span>' : ''}</div>`).join('');
+  }
+
+  /* ========================================================
+     SOL & LUA
+     ======================================================== */
+  function updateSkyInfo(date) {
+    try {
+      if (typeof SunCalc === 'undefined') return;
+      const times = SunCalc.getTimes(date, userLat, userLng);
+      const format = (t) => (t && !isNaN(t.getTime())) ? skyFmt.format(t) : '—';
+      
+      sunriseEl.textContent = format(times.sunrise); 
+      sunsetEl.textContent = format(times.sunset);
+      duskEl.textContent = format(times.dusk); 
+      dawnEl.textContent = format(times.dawn);
+
+      const moon = SunCalc.getMoonIllumination(date);
+      const phase = moon.phase, illum = Math.round(moon.fraction * 100);
+      let nome = 'Lua Nova', emoji = '🌑';
+      if (phase > 0.03 && phase <= 0.22) { nome = 'Lua Crescente'; emoji = '🌒'; }
+      else if (phase > 0.22 && phase <= 0.28) { nome = 'Quarto Crescente'; emoji = '🌓'; }
+      else if (phase > 0.28 && phase <= 0.47) { nome = 'Lua Gibosa Crescente'; emoji = '🌔'; }
+      else if (phase > 0.47 && phase <= 0.53) { nome = 'Lua Cheia'; emoji = '🌕'; }
+      else if (phase > 0.53 && phase <= 0.72) { nome = 'Lua Gibosa Minguante'; emoji = '🌖'; }
+      else if (phase > 0.72 && phase <= 0.78) { nome = 'Quarto Minguante'; emoji = '🌗'; }
+      else if (phase > 0.78 && phase <= 0.97) { nome = 'Lua Minguante'; emoji = '🌘'; }
+      moonEmojiEl.textContent = emoji; moonPhaseEl.textContent = nome; moonIllumEl.textContent = illum + '% iluminada';
+    } catch (e) {}
+  }
+
+  function dayOfYear(y, m, d) { return Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86400000) + 1; }
+  function isoWeek(y, m, d) {
+    const date = new Date(Date.UTC(y, m - 1, d)), dayNum = (date.getUTCDay() + 6) % 7;
+    date.setUTCDate(date.getUTCDate() - dayNum + 3);
+    const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4)), fDayNum = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - fDayNum + 3);
+    return 1 + Math.round((date - firstThursday) / 604800000);
+  }
+
+  /* ========================================================
+     RENDER PRINCIPAL
+     ======================================================== */
+  let lastSecond = -1, lastDateStamp = '', lastPulseSecond = -1;
+  function render(now) {
+    const tp = timeFmt.formatToParts(now);
+    let H = '00', M = '00', S = '00';
+    tp.forEach(p => { if (p.type === 'hour') H = p.value; else if (p.type === 'minute') M = p.value; else if (p.type === 'second') S = p.value; });
+    if (hhEl.textContent !== H) hhEl.textContent = H;
+    if (mmEl.textContent !== M) mmEl.textContent = M;
+    if (ssEl.textContent !== S) {
+      ssEl.textContent = S;
+      if (!reduceMotion && ssEl.animate && S !== lastPulseSecond) {
+        lastPulseSecond = S; ssEl.animate([{ transform: 'scale(1.075)' }, { transform: 'scale(1)' }], { duration: 340, easing: 'cubic-bezier(.2,.85,.25,1)' });
+      }
+    }
+    const opacity = (parseInt(S, 10) % 2) === 0 ? '1' : '.22';
+    colons.forEach(c => { if (c.style.opacity !== opacity) c.style.opacity = opacity; });
+
+    const dp = dateFmt.formatToParts(now);
+    let wd = '', dd = '', mo = '', yy = '';
+    dp.forEach(p => { if (p.type === 'weekday') wd = p.value; else if (p.type === 'day') dd = p.value; else if (p.type === 'month') mo = p.value; else if (p.type === 'year') yy = p.value; });
+    const stamp = dd + '|' + mo + '|' + yy;
+    if (stamp !== lastDateStamp) {
+      lastDateStamp = stamp;
+      weekdayEl.textContent = wd; dayEl.textContent = dd; monthEl.textContent = mo; yearEl.textContent = yy;
+      const np = numFmt.formatToParts(now);
+      let nM = 1, nD = 1, nY = 1970;
+      np.forEach(p => { if (p.type === 'month') nM = parseInt(p.value, 10); else if (p.type === 'day') nD = parseInt(p.value, 10); else if (p.type === 'year') nY = parseInt(p.value, 10); });
+      doyEl.textContent = dayOfYear(nY, nM, nD); wkEl.textContent = isoWeek(nY, nM, nD);
+      updateSkyInfo(now);
+      if (viewMonth === now.getMonth() && viewYear === now.getFullYear()) renderCalendar(viewMonth, viewYear);
+    }
+  }
+
+  /* ========================================================
+     ESTRELAS
+     ======================================================== */
+  const canvas = document.getElementById('stars'), ctx = canvas.getContext('2d', { alpha: true });
+  let dpr = 1, W = 0, H = 0, stars = [];
+  function buildStars() {
+    const count = Math.round(Math.min(110, Math.max(38, (window.innerWidth * window.innerHeight) / 15000)));
+    stars = new Array(count).fill(0).map(() => {
+      const hue = Math.random() < 0.34 ? 268 : (Math.random() < 0.5 ? 190 : 210);
+      return { x: Math.random() * W, y: Math.random() * H, r: (Math.random() * 1.15 + 0.3) * dpr, a: Math.random() * Math.PI * 2, sp: Math.random() * 0.9 + 0.18, vy: (Math.random() * 0.05 + 0.008) * dpr, color: 'hsl(' + hue + ', 100%, 80%)' };
+    });
+  }
+  function resizeCanvas() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = canvas.width = Math.floor(window.innerWidth * dpr); H = canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
+    buildStars();
+  }
+  function drawStars() {
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < stars.length; i++) {
+      const p = stars[i];
+      p.a += 0.014 * p.sp; p.y -= p.vy;
+      if (p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
+      const alpha = 0.12 + 0.62 * (0.5 + 0.5 * Math.sin(p.a));
+      ctx.globalAlpha = alpha; ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283185307); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function loop() {
+    const now = new Date(), sec = now.getSeconds();
+    if (sec !== lastSecond) { lastSecond = sec; render(now); }
+    const p = (sec + now.getMilliseconds() / 1000) / 60;
+    progEl.style.transform = 'scaleX(' + p.toFixed(5) + ')';
+    if (!reduceMotion) drawStars();
+    requestAnimationFrame(loop);
+  }
+
+  /* ========================================================
+     INIT
+     ======================================================== */
+  resizeCanvas();
+  renderCalendar(viewMonth, viewYear);
+  updateSkyInfo(new Date());
+  render(new Date());
+  
+  // Inicia pedindo GPS primeiro para garantir precisão total
+  detectarCidade(); 
+
+  prevBtn.addEventListener('click', () => { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } renderCalendar(viewMonth, viewYear); });
+  nextBtn.addEventListener('click', () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } renderCalendar(viewMonth, viewYear); });
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resizeCanvas, 150); }, { passive: true });
+
+  requestAnimationFrame(loop);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { lastSecond = -1; render(new Date()); } });
+})();
+</script>
+</body>
+</html>
